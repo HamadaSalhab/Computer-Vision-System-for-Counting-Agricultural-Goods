@@ -1,4 +1,3 @@
-from tkinter import image_names
 import torch
 import torch.nn as nn
 
