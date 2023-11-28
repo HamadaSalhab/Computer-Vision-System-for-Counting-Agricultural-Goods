@@ -14,7 +14,7 @@ import torchvision
 
 # Define the dataset URL and the paths for storing the dataset
 DATASET_DOWNLOAD_URL = "https://app.roboflow.com/ds/5wWd1OaqhW?key=io0HopkvZo"
-DATASET_RAW_PATH_RELATIVE = '/../../data/raw/blueberries.zip'
+DATASET_RAW_PATH_RELATIVE = '/../../data/raw/blueberries/train/'
 DATASET_RAW_PATH_ABSOLUTE = os.path.dirname(__file__) + DATASET_RAW_PATH_RELATIVE
 DATASET_RAW_DIR_RELATIVE = '/../../data/raw/blueberries/'
 DATASET_RAW_DIR_ABSOLUTE = os.path.dirname(__file__) + DATASET_RAW_DIR_RELATIVE
@@ -165,12 +165,14 @@ def crop_image(xmin, ymin, xmax, ymax, image):
     new_image[y_offset:y_offset+cropped_image.shape[0], x_offset:x_offset+cropped_image.shape[1]] = cropped_image
     return new_image
 
-def prepare_dataset():
 
-    annotations_df = pd.read_csv(f'../../data/raw/blueberries/train/_annotations.csv')
-    dataset_path = f'../../data/raw/blueberries/train/'
-    destination_dir = '../../data/interim/train/'
-    sam_checkpoint = "../../data/external/sam_vit_h_4b8939.pth"
+def prepare_dataset():
+     
+    annotations_df = pd.read_csv(f'{DATASET_RAW_PATH_ABSOLUTE}/_annotations.csv')
+    dataset_path = DATASET_RAW_PATH_ABSOLUTE
+    
+    destination_dir = os.path.dirname(__file__) + '/../../data/interim/train/'
+    sam_checkpoint = os.path.dirname(__file__) + "/../../data/external/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
 
     device = "cuda"
@@ -189,10 +191,12 @@ def prepare_dataset():
         masks = mask_generator.generate(image)
         for index, mask in enumerate(masks):
             masked_image = image * mask["segmentation"][:, :, np.newaxis]
-            cropped_masked_image = crop_image(mask["bbox"][0], mask["bbox"][1],
+            try:
+              cropped_masked_image = crop_image(mask["bbox"][0], mask["bbox"][1],
                                               mask["bbox"][0] + mask["bbox"][2],
                                               mask["bbox"][1] + mask["bbox"][3], masked_image)
-
+            except:
+              continue
             ground_truth_boxes = group[["xmin", "ymin", "xmax", "ymax"]].to_numpy()
             iou = 0
             for box in ground_truth_boxes:
@@ -201,11 +205,11 @@ def prepare_dataset():
                         mask['bbox'][1] + mask['bbox'][3]]
                 iou = max(get_iou(box1, box2), iou)
             if iou > 0.65:
-                save_path = f'{destination_dir}/cropped_images_positive/{image_name}_object_{index}.jpg'
+                save_path = f'{destination_dir}cropped_images_positive/{image_name}_object_{index}.jpg'
                 cv2.imwrite(save_path, cropped_masked_image)
 
             else:
-                save_path = f'{destination_dir}/cropped_images_negative/{image_name}_object_{index}.jpg'
+                save_path = f'{destination_dir}cropped_images_negative/{image_name}_object_{index}.jpg'
                 cv2.imwrite(save_path, cropped_masked_image)
     print("Finished processing. The processed masked images can be found in project_root_dir/data/interim/train.")
 if __name__ == '__main__':
