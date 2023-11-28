@@ -14,10 +14,8 @@ import torchvision
 
 # Define the dataset URL and the paths for storing the dataset
 DATASET_DOWNLOAD_URL = "https://app.roboflow.com/ds/5wWd1OaqhW?key=io0HopkvZo"
-DATASET_RAW_PATH_RELATIVE = '/../../data/raw/blueberries/train/'
-DATASET_RAW_PATH_ABSOLUTE = os.path.dirname(__file__) + DATASET_RAW_PATH_RELATIVE
-DATASET_RAW_DIR_RELATIVE = '/../../data/raw/blueberries/'
-DATASET_RAW_DIR_ABSOLUTE = os.path.dirname(__file__) + DATASET_RAW_DIR_RELATIVE
+DATASET_RAW_RELATIVE_PATH = '../../data/raw/blueberries'
+DATASET_RAW_DIR = os.path.join(os.path.dirname(__file__), DATASET_RAW_RELATIVE_PATH)
 
 def download_dataset(url, save_path, chunk_size=128):
     """
@@ -33,6 +31,8 @@ def download_dataset(url, save_path, chunk_size=128):
     Raises:
         requests.exceptions.RequestException: If there is an issue with network access or the request.
     """
+    
+    print("save path is :", save_path)
     print('Fetching url...')
     r = requests.get(url, stream=True)
     if r.status_code == 200:
@@ -70,23 +70,24 @@ def get_dataset():
     Raises:
         Exception: If there is an issue accessing the file system or handling the zip file.
     """
+    zip_path = os.path.join(DATASET_RAW_DIR, 'blueberries.zip')
     try:
-        # Directory exists, and not empty
-        if os.path.isdir(DATASET_RAW_DIR_ABSOLUTE) and len(os.listdir(DATASET_RAW_DIR_ABSOLUTE)) != 0:
-            print('Dataset already exists at ' + DATASET_RAW_DIR_ABSOLUTE)
-        elif os.path.exists(DATASET_RAW_PATH_ABSOLUTE):
-            print(f"Dataset doesn't exist at {DATASET_RAW_DIR_ABSOLUTE}, but .zip file is found")
-            extract_zip(zip_path=DATASET_RAW_PATH_ABSOLUTE, destination_dir=DATASET_RAW_DIR_ABSOLUTE)
+        if os.path.isdir(DATASET_RAW_DIR) and len(os.listdir(DATASET_RAW_DIR)) != 0:
+            print('Dataset already exists at ' + DATASET_RAW_DIR)
+        elif os.path.exists(zip_path):
+            print(f"Dataset doesn't exist at {DATASET_RAW_DIR}, but .zip file is found")
+            extract_zip(zip_path=zip_path, destination_dir=DATASET_RAW_DIR)
         else:
             print('Dataset does not exist, downloading...')
-            download_dataset(DATASET_DOWNLOAD_URL, DATASET_RAW_PATH_ABSOLUTE)
-            extract_zip(zip_path=DATASET_RAW_PATH_ABSOLUTE, destination_dir=DATASET_RAW_DIR_ABSOLUTE)
-        
+            download_dataset(DATASET_DOWNLOAD_URL, zip_path)
+            extract_zip(zip_path=zip_path, destination_dir=DATASET_RAW_DIR)
     except Exception as e:
         print('An error occurred: ' + str(e))
         raise e
     finally:
         print('All set. The dataset can be found in project_root_dir/data/raw.')
+
+
 
 
 def get_iou(ground_truth, pred):
@@ -168,8 +169,8 @@ def crop_image(xmin, ymin, xmax, ymax, image):
 
 def prepare_dataset():
      
-    annotations_df = pd.read_csv(f'{DATASET_RAW_PATH_ABSOLUTE}/_annotations.csv')
-    dataset_path = DATASET_RAW_PATH_ABSOLUTE
+    annotations_path = os.path.join(DATASET_RAW_DIR, 'train/_annotations.csv')
+    annotations_df = pd.read_csv(annotations_path)
     
     destination_dir = os.path.dirname(__file__) + '/../../data/interim/train/'
     sam_checkpoint = os.path.dirname(__file__) + "/../../data/external/sam_vit_h_4b8939.pth"
@@ -187,7 +188,7 @@ def prepare_dataset():
     groups = annotations_df.groupby("filename")
     print("Started processing images...")
     for image_name, group in groups:
-        image = cv2.imread(dataset_path + "/" + image_name)
+        image = cv2.imread(DATASET_RAW_DIR + "/train/" + image_name)
         masks = mask_generator.generate(image)
         for index, mask in enumerate(masks):
             masked_image = image * mask["segmentation"][:, :, np.newaxis]
