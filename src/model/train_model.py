@@ -22,7 +22,7 @@ class ClassificationModel(nn.Module):
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         
         # Fully Connected Layer
-        self.fc = nn.Linear(64 * 16 * 16, 1)
+        self.fc = nn.Linear(64 * 32 * 32, 1)
         self.sigmoid = nn.Sigmoid()
     
     def forward(self, x):
@@ -109,7 +109,7 @@ def train_model(model, epochs, optimizer, loss_fn, train_dataloader, val_dataloa
 
 
 transform = transforms.Compose([
-    transforms.Resize((64, 64)),
+    transforms.Resize((128, 128)),
     transforms.ToTensor(),
     #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
@@ -138,15 +138,15 @@ if __name__ == '__main__':
     # Create the sampler
     sampler = WeightedRandomSampler(weights, num_samples, replacement=True)
     # Create the dataloaders
-    train_dataloader = DataLoader(train_dataset, batch_size=64, sampler=sampler)
-    val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=8, sampler=sampler)
+    val_dataloader = DataLoader(val_dataset, batch_size=8, shuffle=False)
 
     # Model initialization
     model = ClassificationModel(3)  # 3 input channels for RGB images
 
-    optimizer = optim.SGD(model.parameters(), lr=0.001)
+    optimizer = optim.SGD(model.parameters(), lr=0.00005)
     loss_fn = nn.BCELoss()  # Ensure the output layer of your model is compatible with BCELoss
 
-    trained_model = train_model(model = model, epochs=15, optimizer=optimizer, loss_fn=loss_fn, train_dataloader=train_dataloader, val_dataloader=val_dataloader)
+    trained_model = train_model(model = model, epochs=10, optimizer=optimizer, loss_fn=loss_fn, train_dataloader=train_dataloader, val_dataloader=val_dataloader)
 
 
